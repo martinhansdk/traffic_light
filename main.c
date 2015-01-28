@@ -24,18 +24,24 @@ int light_time = 0;
 
 /* define the schedule
 */
-#define RED_TIME 35
-#define YELLOW_RED_TIME 1
-#define GREEN_TIME 18
-#define YELLOW_TIME 4
+#define YELLOW_RED_DURATION 1
+#define GREEN_DURATION 18
+#define YELLOW_DURATION 4
+#define BOTH_RED_DURATION 1
+// the duration of the red signal must be just so long that the light pointing
+// in the other direction can cycle through yellow-green-yellow plus a
+// little margin where botgh are red
+#define RED_DURATION (YELLOW_RED_DURATION + GREEN_DURATION + YELLOW_DURATION + BOTH_RED_DURATION)
 
 // calculate the cycle time and the switch times based on this
-#define CYCLE_TIME  (RED_TIME + YELLOW_RED_TIME + GREEN_TIME + YELLOW_TIME)
-#define SWITCH_TO_YELLOW_RED_TIME (RED_TIME)
-#define SWITCH_TO_GREEN_TIME (SWITCH_TO_YELLOW_RED_TIME + YELLOW_RED_TIME)
-#define SWITCH_TO_YELLOW_TIME (SWITCH_TO_GREEN_TIME + GREEN_TIME)
+#define CYCLE_TIME  (RED_DURATION + YELLOW_RED_DURATION + GREEN_DURATION + YELLOW_DURATION)
+#define SWITCH_TO_YELLOW_RED_TIME (RED_DURATION)
+#define SWITCH_TO_GREEN_TIME (SWITCH_TO_YELLOW_RED_TIME + YELLOW_RED_DURATION)
+#define SWITCH_TO_YELLOW_TIME (SWITCH_TO_GREEN_TIME + GREEN_DURATION)
 
-#define B_OFFSET 30
+// the B timing switches to yellow/red shortly after the A timing
+// has switched to red
+#define B_OFFSET (SWITCH_TO_YELLOW_RED_TIME - BOTH_RED_DURATION)
 
 void set_lights(int light_time) {
   if(timing == B) {
