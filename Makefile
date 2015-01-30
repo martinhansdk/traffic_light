@@ -20,7 +20,7 @@
 DEVICE     = attiny45
 CLOCK      = 4000000
 PROGRAMMER = -c arduino -p attiny45
-OBJECTS    = main.o
+OBJECTS    = main.o IRremote.o Arduino.o 
 FUSES      = -U hfuse:w:0xdf:m -U lfuse:w:0x64:m
 
 # For computing fuse byte values for other devices and options see
@@ -34,6 +34,9 @@ COMPILE = avr-gcc -Wall -Os -DF_CPU=$(CLOCK) -mmcu=$(DEVICE)
 
 # symbolic targets:
 all:	main.hex
+
+.cpp.o:
+	$(COMPILE) -c $< -o $@
 
 .c.o:
 	$(COMPILE) -c $< -o $@
