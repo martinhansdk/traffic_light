@@ -1,11 +1,32 @@
-volatile int timer_overflow_count = 0;
+#include <IRremote.h>
 
-#define RED_PIN 0
-#define YELLOW_PIN 1
-#define GREEN_PIN 2
+#define IR_SEND_PIN 3
+#define RED_PIN 8
+#define YELLOW_PIN 5
+#define GREEN_PIN 6
+#define IR_RECEIVE_PIN 7
+
+
+#define CMD_SHIFT 10
+#define IR_SYNC_CMD    0x5a
+#define IR_PROGRAM_CMD 0x45
+#define IR_ROLE_CMD    0x57
+
+// sync command message format
+#define MODE_SHIFT 9
+
+// program command message format
+#define INDEX_SHIFT  10
+#define RED_SHIFT    9
+#define YELLOW_SHIFT 8
+#define GREEN_SHIFT  7
+
+IRsend irsend;
+IRrecv irrecv(IR_RECEIVE_PIN);
 
 volatile int timer_interrupt = 0;
 boolean is_master = false;
+boolean manual_mode = false;
 
 /**
   A LightPattern specifies a duration and which lamps are on for that duration.
@@ -88,6 +109,33 @@ void set_lights(int light_time) {
   digitalWrite(GREEN_PIN, pattern->green);
 }
 
+void handle_ir_commands(const decode_results &irdata) {
+
+  int command = (irdata.value >> CMD_SHIFT) & 0x3f; // 6 bits of command 
+  
+  switch(command) {
+  case IR_SYNC_CMD:
+    manual_mode = (irdata.value >> MODE_SHIFT) & 0x1;  // 1 bit
+    light_time = irdata.value & 0x1ff; // 9 bits of time
+    break;
+  case IR_PROGRAM_CMD:
+    {
+      int index = (irdata.value >> INDEX_SHIFT) & 0x7;  // 3 bit
+      int red = (irdata.value >> RED_SHIFT) & 0x1; // 1 bit
+      int yellow = (irdata.value >> YELLOW_SHIFT) & 0x1; // 1 bit
+      int green = (irdata.value >> GREEN_SHIFT) & 0x1; // 1 bit
+      int duration = irdata.value & 0x7f; // 7 bits of duration
+      schedule.setPattern(index, duration, red, yellow, green);
+    }
+    break;
+  case IR_ROLE_CMD:
+    is_master = irdata.value & 0x1;
+    break;
+  default:
+    break;
+  }       
+}
+
 ISR(TIMER1_COMPA_vect)          // timer compare interrupt service routine
 {
   digitalWrite(13, digitalRead(13) ^ 1);   // toggle LED pin
@@ -126,13 +174,30 @@ void setup() {
   TCCR1B |= (1 << CS12);    // 256 prescaler 
   TIMSK1 |= (1 << OCIE1A);  // enable timer compare interrupt
   interrupts();             // enable all interrupts
+  
+  irrecv.enableIRIn(); // Start the receiver
+  irrecv.blink13(true); // blink LED on pin 13 while processing IR data
 }
+
+decode_results irdata;
 
 void loop() {
   // wait until timer isr was run
-  while(!timer_interrupt);
+  while(true) {
+    if (irrecv.decode(&irdata)) {
+      handle_ir_commands(irdata);
+    }
+    if(timer_interrupt) break;
+  }
   timer_interrupt = 0;
 
-  light_time = (light_time+1) % cycle_time;
+  light_time++;
+  if(light_time > cycle_time) {
+    light_time %= cycle_time;
+    
+    if(is_master) {
+      irsend.sendRC5((IR_SYNC_CMD<<CMD_SHIFT) | (manual_mode << MODE_SHIFT) | light_time, 16);
+    }
+  }
   set_lights(light_time);
 }
