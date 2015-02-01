@@ -1,11 +1,10 @@
-#include <avr/io.h>
-#include <avr/interrupt.h>
-
 volatile int timer_overflow_count = 0;
 
-#define RED_PIN PB3
-#define YELLOW_PIN PB4
-#define GREEN_PIN PB5
+#define RED_PIN 0
+#define YELLOW_PIN 1
+#define GREEN_PIN 2
+
+volatile int timer_interrupt = 0;
 
 /**
   The timing of a traffic light determines how the light_time is translated
@@ -24,10 +23,10 @@ int light_time = 0;
 
 /* define the schedule
 */
-#define YELLOW_RED_DURATION 1
-#define GREEN_DURATION 18
-#define YELLOW_DURATION 4
-#define BOTH_RED_DURATION 1
+#define YELLOW_RED_DURATION 1*2
+#define GREEN_DURATION 18*2
+#define YELLOW_DURATION 4*2
+#define BOTH_RED_DURATION 1*2
 // the duration of the red signal must be just so long that the light pointing
 // in the other direction can cycle through yellow-green-yellow plus a
 // little margin where botgh are red
@@ -48,6 +47,7 @@ void set_lights(int light_time) {
     light_time = (light_time + B_OFFSET) % CYCLE_TIME;
   }
 
+
   int red = 0;
   int yellow = 0;
   int green = 0;
@@ -64,32 +64,52 @@ void set_lights(int light_time) {
   }
 
   // all off
-  PORTB &= ~((1 << RED_PIN) | (1 << YELLOW_PIN) | (1 << GREEN_PIN));
+  // PORTB &= ~((1 << RED_PIN) | (1 << YELLOW_PIN) | (1 << GREEN_PIN));
   // turn only the right ones on
-  PORTB |= (red << RED_PIN) | (yellow << YELLOW_PIN) | (green << GREEN_PIN);
+  // PORTB |= (red << RED_PIN) | (yellow << YELLOW_PIN) | (green << GREEN_PIN);
+  
+  digitalWrite(RED_PIN, red);
+  digitalWrite(YELLOW_PIN, yellow);
+  digitalWrite(GREEN_PIN, green);
 }
 
 
 ISR(TIM0_OVF_vect) {
-   if (++timer_overflow_count > 5) {   // a timer overflow occurs 4.6 times per second
-      light_time = (light_time+1) % CYCLE_TIME;
-      set_lights(light_time);
-      timer_overflow_count = 0;
-   }
+
 }
 
-int main(void) {
+void setup() {
    // Set LED ports to output
-   DDRB = 1<<RED_PIN | 1<<YELLOW_PIN | 1<<GREEN_PIN;
+   //DDRB = 1<<RED_PIN | 1<<YELLOW_PIN | 1<<GREEN_PIN;
+   pinMode(RED_PIN, OUTPUT);
+   pinMode(YELLOW_PIN, OUTPUT);
+   pinMode(GREEN_PIN, OUTPUT);
 
-   // prescale timer to 1/1024th the clock rate
-   TCCR0B |= (1<<CS02) | (1<<CS00);
+  // initialize timer1 
+  noInterrupts();           // disable all interrupts
+  TCCR1A = 0;
+  TCCR1B = 0;
+  TCNT1  = 0;
 
-   // enable timer overflow interrupt
-   TIMSK |=1<<TOIE0;
-   sei();
+  OCR1A = 31250;            // compare match register 16MHz/256/2Hz
+  TCCR1B |= (1 << WGM12);   // CTC mode
+  TCCR1B |= (1 << CS12);    // 256 prescaler 
+  TIMSK1 |= (1 << OCIE1A);  // enable timer compare interrupt
+  interrupts();             // enable all interrupts
+}
 
-   while(1) {
-      // let ISR handle the LEDs forever
-   }
+ISR(TIMER1_COMPA_vect)          // timer compare interrupt service routine
+{
+  digitalWrite(13, digitalRead(13) ^ 1);   // toggle LED pin
+  timer_interrupt = 1;
+}
+
+void loop() {
+  // wait until timer isr was run
+  while(!timer_interrupt);
+  timer_interrupt = 0;
+
+  light_time = (light_time+1) % CYCLE_TIME;
+  set_lights(light_time);
+  
 }
