@@ -32,6 +32,7 @@
 
 #include "schedule.h"
 #include "irrecv/irrecv.h"
+#include "irsend/irsend.h"
 
 #define IR_SEND_PIN PA7
 #define RED_PIN PA1
@@ -161,7 +162,7 @@ int main() {
         light_time %= cycle_time;
 
         if(is_master) {
-          //irsend.sendRC5((IR_SYNC_CMD<<CMD_SHIFT) | (manual_mode << MODE_SHIFT) | light_time, 16);
+          irsend_sendRC5((IR_SYNC_CMD<<CMD_SHIFT) | (manual_mode << MODE_SHIFT) | light_time, 16);
         }
       }
       set_lights(light_time);
