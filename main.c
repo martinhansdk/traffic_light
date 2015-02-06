@@ -27,13 +27,16 @@
 #error F_CPU not defined
 #endif
 
+#include <stdbool.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
 #include "schedule.h"
+#include "debounce.h"
 #include "irrecv/irrecv.h"
 #include "irsend/irsend.h"
 
+#define BUTTON_PIN PA0
 #define IR_SEND_PIN PA7
 #define RED_PIN PA1
 #define YELLOW_PIN PA2
@@ -105,9 +108,17 @@ void handle_ir_commands(const decode_results *irdata) {
   }
 }
 
+bool RawKeyPressed() {
+    return PORTA & _BV(BUTTON_PIN);
+}
+
 ISR(TIM0_COMPA_vect)          // timer compare interrupt service routine
 {
+  bool button_changed, button_pressed;
+
   timer_interrupt = 1;
+
+  DebounceSwitch(&button_changed, &button_pressed);
 }
 
 decode_results irdata = {
