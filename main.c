@@ -59,7 +59,7 @@
 #define GREEN_SHIFT  7
 
 volatile int timer_interrupt = 0;
-bool is_master = false;
+bool is_master = true;
 bool manual_mode = false;
 
 /**
@@ -160,7 +160,6 @@ int main() {
 
   // Set LED ports to output
   DDRA |= _BV(RED_PIN) | _BV(YELLOW_PIN) | _BV(GREEN_PIN);
-  PORTA &= ~(1<<RED_PIN);
 
   // initialize timer0, trigger compare interrupt once every 1 ms
   TCCR0A = 0x02;      // Clear Timer on Compare Match (CTC) mode
@@ -169,7 +168,7 @@ int main() {
   TCCR0B = 0x03;      // clock source CLK/64, start timer
 
 #if F_CPU == 4000000
-  OCR0A  = 63;        // number to count up to
+  OCR0A  = 62;        // number to count up to
 #elif F_CPU == 8000000
   OCR0A  = 125;       // number to count up to
 #elif F_CPU == 16000000
