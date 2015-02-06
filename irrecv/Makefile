@@ -1,7 +1,7 @@
 # Name: Makefile
-# Author: Martin Hans
-# Copyright: 2015
-# License: MIT license
+# Author: <insert your name here>
+# Copyright: <insert your copyright message here>
+# License: <insert your license reference here>
 
 # This is a prototype Makefile. Modify it according to your needs.
 # You should at least check the settings for
@@ -11,32 +11,38 @@
 #                usually the same as the list of source files with suffix ".o".
 # PROGRAMMER ... Options to avrdude which define the hardware you use for
 #                uploading to the AVR and the interface where this hardware
-#                is connected. We recommend that you leave it undefined and
-#                add settings like this to your ~/.avrduderc file:
-#                   default_programmer = "stk500v2"
-#                   default_serial = "avrdoper"
+#                is connected.
 # FUSES ........ Parameters for avrdude to flash the fuses appropriately.
 
-DEVICE     = attiny84
-CLOCK      = 4000000
-PROGRAMMER = -c arduino -p attiny84
-OBJECTS    = main.o schedule.o irrecv/irrecv.c
-FUSES      = -U lfuse:w:0x60:m -U hfuse:w:0xdf:m -U efuse:w:0xff:m 
+include ../lib/mk/fuses.mk
 
-# For computing fuse byte values for other devices and options see
-# the fuse bit calculator at http://www.engbedded.com/fusecalc/
+DEVICE     = attiny4313
 
+# use external cyrstal:
+#CLOCK      = 16000000
+#FUSES      = $(FUSES_4313_EXT)
+
+# use internal oscillator
+CLOCK      = 8000000
+FUSES      = $(FUSES_4313_AT8)
+
+#IRREMOTE   = onkyo581s
+IRREMOTE   = rc5
+
+PROGRAMMER = -c avrisp2 -P usb
+OBJECTS    = main.o irrecv.o process.o timer0.o
 
 # Tune the lines below only if you know what you are doing:
 
 AVRDUDE = avrdude $(PROGRAMMER) -p $(DEVICE)
-COMPILE = avr-gcc -Wall -Os -DF_CPU=$(CLOCK) -mmcu=$(DEVICE)
+COMPILE = avr-gcc -std=gnu99 -Wall -Os -DF_CPU=$(CLOCK) -mmcu=$(DEVICE)
+VPATH   = $(IRREMOTE)
 
 # symbolic targets:
 all:	main.hex
 
 .c.o:
-	$(COMPILE) -c $< -o $@
+	$(COMPILE) -c -I$(PWD) $< -o $@
 
 .S.o:
 	$(COMPILE) -x assembler-with-cpp -c $< -o $@
@@ -62,16 +68,18 @@ load: all
 	bootloadHID main.hex
 
 clean:
-	rm -f main.hex main.elf $(OBJECTS)
+	/bin/rm -f main.hex main.elf main.map $(OBJECTS) *~
 
 # file targets:
 main.elf: $(OBJECTS)
-	$(COMPILE) -o main.elf $(OBJECTS)
+	$(COMPILE) -o main.elf -Wl,-Map=main.map  $(OBJECTS)
 
 main.hex: main.elf
-	rm -f main.hex
+	/bin/rm -f main.hex
 	avr-objcopy -j .text -j .data -O ihex main.elf main.hex
-	avr-size --format=avr --mcu=$(DEVICE) main.elf
+	avr-size -t $(OBJECTS)
+	avr-size main.elf
+
 # If you have an EEPROM section, you must also create a hex file for the
 # EEPROM and add it to the "flash" target.
 
@@ -81,3 +89,7 @@ disasm:	main.elf
 
 cpp:
 	$(COMPILE) -E main.c
+
+# DO NOT DELETE
+irrecv.o: irrecv.h irrecvint.h
+main.o: main.c irrecv.h timer0.h
