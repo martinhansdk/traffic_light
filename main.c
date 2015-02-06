@@ -136,7 +136,9 @@ decode_results irdata = {
 int main() {
   // define schedule
   int i = 0;
-  setPattern(&schedule, i++, 1*2, true, true, false); // yellow/red
+
+
+  setPattern(&schedule, i++, 2*2, true, true, false); // yellow/red
   setPattern(&schedule, i++, 18*2, false, false, true); // green
   setPattern(&schedule, i++, 4*2, false, true, false); // yellow
   // the duration of the red signal must be just so long that the light pointing
@@ -147,6 +149,11 @@ int main() {
   setPattern(&schedule, i++, red_duration, true, false, false); // red
   setPattern(&schedule, i, 0, false, false, false); // end marker
 
+/*
+  setPattern(&schedule, i++, 1*2, false, true, false); // yellow
+  setPattern(&schedule, i++, 1*2, false, false, false); // off
+  setPattern(&schedule, i, 0, false, false, false); // end marker
+*/
 
   cycle_time = cycleTime(&schedule);
 
@@ -189,7 +196,7 @@ int main() {
 
       light_time++;
 
-      if(light_time > cycle_time) {
+      if(light_time >= cycle_time) {
         light_time %= cycle_time;
 
         if(is_master) {
