@@ -18,10 +18,12 @@
 # FUSES ........ Parameters for avrdude to flash the fuses appropriately.
 
 DEVICE     = attiny84
-CLOCK      = 4000000
-PROGRAMMER = -c arduino -p attiny84
+CLOCK      = 8000000
+PROGRAM_PORT = COM6
+PROGRAMMER = -c arduino -P $(PROGRAM_PORT) -b 19200
 OBJECTS    = main.o schedule.o debounce.c irrecv/irrecv.o irsend/irsend.o
-FUSES      = -U lfuse:w:0x60:m -U hfuse:w:0xdf:m -U efuse:w:0xff:m
+#FUSES      = -U lfuse:w:0x60:m -U hfuse:w:0xdf:m -U efuse:w:0xff:m
+FUSES      = -U lfuse:w:0xe2:m -U hfuse:w:0xdf:m -U efuse:w:0xff:m
 
 # For computing fuse byte values for other devices and options see
 # the fuse bit calculator at http://www.engbedded.com/fusecalc/
