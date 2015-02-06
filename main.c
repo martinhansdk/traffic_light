@@ -76,9 +76,9 @@ void set_lights(int light_time) {
   const LightPattern* pattern = currentPattern(&schedule, light_time);
 
   // all off
-  PORTB &= ~((1 << RED_PIN) | (1 << YELLOW_PIN) | (1 << GREEN_PIN));
+  PORTA &= ~((1 << RED_PIN) | (1 << YELLOW_PIN) | (1 << GREEN_PIN));
   // turn only the right ones on
-  PORTB |= (pattern->red << RED_PIN) | (pattern->yellow << YELLOW_PIN) | (pattern->green << GREEN_PIN);
+  PORTA |= (pattern->red << RED_PIN) | (pattern->yellow << YELLOW_PIN) | (pattern->green << GREEN_PIN);
 }
 
 void handle_ir_commands(const decode_results *irdata) {
@@ -115,6 +115,7 @@ bool RawKeyPressed() {
 
 // timer compare interrupt service routine, called once every 1 ms
 uint16_t timer_int_count = 0;
+
 ISR(TIM0_COMPA_vect)
 {
   bool button_changed, button_pressed;
@@ -146,16 +147,20 @@ int main() {
   setPattern(&schedule, i++, red_duration, true, false, false); // red
   setPattern(&schedule, i, 0, false, false, false); // end marker
 
+
   cycle_time = cycleTime(&schedule);
+
 
   // Set LED ports to output
   DDRA |= _BV(RED_PIN) | _BV(YELLOW_PIN) | _BV(GREEN_PIN);
+  PORTA &= ~(1<<RED_PIN);
 
   // initialize timer0, trigger compare interrupt once every 1 ms
   TCCR0A = 0x02;      // Clear Timer on Compare Match (CTC) mode
   TIFR0 |= 0x01;      // clear interrupt flag
-  TIMSK0 = 0x01;      // TC0 compare match A interrupt enable
+  TIMSK0 = 0x02;      // TC0 compare match A interrupt enable
   TCCR0B = 0x03;      // clock source CLK/64, start timer
+
 #if F_CPU == 4000000
   OCR0A  = 63;        // number to count up to
 #elif F_CPU == 8000000
@@ -165,7 +170,6 @@ int main() {
 #else
 #error Unsupported F_CPU
 #endif
-
 
   setup_irrecv();
 
@@ -184,6 +188,7 @@ int main() {
       timer_interrupt = 0;
 
       light_time++;
+
       if(light_time > cycle_time) {
         light_time %= cycle_time;
 
