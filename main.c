@@ -67,6 +67,7 @@ bool manual_mode = false;
   The correct state of the lights is computed from this.
   The unit is 1/2 seconds.
 */
+#define TIME_UNIT_MS 500
 int light_time = 0;
 int cycle_time = 1;
 Schedule schedule;
@@ -112,11 +113,17 @@ bool RawKeyPressed() {
     return PORTA & _BV(BUTTON_PIN);
 }
 
-ISR(TIM0_COMPA_vect)          // timer compare interrupt service routine
+// timer compare interrupt service routine, called once every 1 ms
+uint16_t timer_int_count = 0;
+ISR(TIM0_COMPA_vect)
 {
   bool button_changed, button_pressed;
 
-  timer_interrupt = 1;
+  timer_int_count++;
+  if(timer_int_count >= TIME_UNIT_MS) {
+      timer_interrupt = 1;
+      timer_int_count = 0;
+  }
 
   DebounceSwitch(&button_changed, &button_pressed);
 }
@@ -144,12 +151,20 @@ int main() {
   // Set LED ports to output
   DDRA |= _BV(RED_PIN) | _BV(YELLOW_PIN) | _BV(GREEN_PIN);
 
-  // initialize timer0
-  OCR0A  = 4;         // number to count up to
+  // initialize timer0, trigger compare interrupt once every 1 ms
   TCCR0A = 0x02;      // Clear Timer on Compare Match (CTC) mode
   TIFR0 |= 0x01;      // clear interrupt flag
   TIMSK0 = 0x01;      // TC0 compare match A interrupt enable
-  TCCR0B = 0x05;      // clock source CLK/1024, start timer
+  TCCR0B = 0x03;      // clock source CLK/64, start timer
+#if F_CPU == 4000000
+  OCR0A  = 63;        // number to count up to
+#elif F_CPU == 8000000
+  OCR0A  = 125;       // number to count up to
+#elif F_CPU == 16000000
+  OCR0A  = 250;       // number to count up to
+#else
+#error Unsupported F_CPU
+#endif
 
 
   setup_irrecv();
