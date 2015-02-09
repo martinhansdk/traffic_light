@@ -1,7 +1,7 @@
 traffic_light
 =============
 
-[![Build Status](https://travis-ci.org/martinhansdk/traffic-light.png)](https://travis-ci.org/martinhansdk/traffic_light)
+[![Build Status](https://travis-ci.org/martinhansdk/traffic_light.png)](https://travis-ci.org/martinhansdk/traffic_light)
 
 Firmware for a toy traffic light implemented on an attiny44.
 
