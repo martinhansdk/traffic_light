@@ -3,7 +3,7 @@
 #define _IRSENDINT_H
 
 #include <avr/interrupt.h>
-
+#include "../hal/pins.h"
 
 #define SYSCLOCK F_CPU	// CPU clock frequency
 
@@ -123,5 +123,6 @@
   OCR1A = SYSCLOCK * USECPERTICK / 1000000; \
   TCNT1 = 0; \
 })
+#define IRSEND_PIN A,PA6
 
 #endif

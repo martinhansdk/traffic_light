@@ -1,7 +1,9 @@
 #ifndef IRRECV_H
 #define IRRECV_H
 
-#undef COMPILE_DECODE_NEC  
+#include "../hal/pins.h"
+
+#undef COMPILE_DECODE_NEC
 #undef COMPILE_DECODE_SONY
 #undef COMPILE_DECODE_RC6
 #undef COMPILE_DECODE_JVC
@@ -12,9 +14,9 @@
     defined(COMPILE_DECODE_RC6)  || \
     defined(COMPILE_DECODE_JCV)
 #define RAWBUF 68
-#else 
+#else
 // RC5 only
-#define RAWBUF 24 
+#define RAWBUF 24
 #endif
 
 // Results returned from the decoder
@@ -48,5 +50,8 @@ void irrecv_resume(void);
 // Marks tend to be 100us too long, and spaces 100us too short
 // when received due to sensor lag.
 #define MARK_EXCESS 100
+
+#define IR_DETECTOR_PIN A,PA7
+#define ACTIVITY_LED_PIN A,PA0
 
 #endif /* IRRECV_H */

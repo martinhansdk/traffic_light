@@ -35,13 +35,14 @@
 #include "debounce.h"
 #include "irrecv/irrecv.h"
 #include "irsend/irsend.h"
+#include "hal/pins.h"
 
-#define BUTTON_PIN PA0
-#define IR_SEND_PIN PA7
-#define RED_PIN PA1
-#define YELLOW_PIN PA2
-#define GREEN_PIN PA3
-#define IR_RECEIVE_PIN PA7
+#define BUTTON_PIN A,PA0
+#define IR_SEND_PIN A,PA7
+#define RED_PIN A,PA1
+#define YELLOW_PIN A,PA2
+#define GREEN_PIN A,PA3
+#define IR_RECEIVE_PIN A,PA7
 
 
 #define CMD_SHIFT 10
@@ -75,10 +76,9 @@ Schedule schedule;
 void set_lights(int light_time) {
   const LightPattern* pattern = currentPattern(&schedule, light_time);
 
-  // all off
-  PORTA &= ~((1 << RED_PIN) | (1 << YELLOW_PIN) | (1 << GREEN_PIN));
-  // turn only the right ones on
-  PORTA |= (pattern->red << RED_PIN) | (pattern->yellow << YELLOW_PIN) | (pattern->green << GREEN_PIN);
+  if(pattern->red) pin_high(RED_PIN); else pin_low(RED_PIN);
+  if(pattern->yellow) pin_high(YELLOW_PIN); else pin_low(YELLOW_PIN);
+  if(pattern->green) pin_high(GREEN_PIN); else pin_low(GREEN_PIN);
 }
 
 void handle_ir_commands(const decode_results *irdata) {
@@ -110,7 +110,7 @@ void handle_ir_commands(const decode_results *irdata) {
 }
 
 bool RawKeyPressed() {
-    return PORTA & _BV(BUTTON_PIN);
+    return get_input(BUTTON_PIN);
 }
 
 // timer compare interrupt service routine, called once every 1 ms
@@ -159,7 +159,9 @@ int main() {
 
 
   // Set LED ports to output
-  DDRA |= _BV(RED_PIN) | _BV(YELLOW_PIN) | _BV(GREEN_PIN);
+  set_dir_out(RED_PIN);
+  set_dir_out(YELLOW_PIN);
+  set_dir_out(GREEN_PIN);
 
   // initialize timer0, trigger compare interrupt once every 1 ms
   TCCR0A = 0x02;      // Clear Timer on Compare Match (CTC) mode

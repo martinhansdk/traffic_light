@@ -216,9 +216,10 @@ void enableIROut(int khz) {
   TIMER_DISABLE_INTR; //Timer1 Overflow Interrupt
 
   // set pin to output
-  DDRB |= _BV(PB2);
+  set_dir_out(IRSEND_PIN);
+
   // When not sending PWM, we want it low
-  PORTB &= ~_BV(PB2);
+  pin_low(IRSEND_PIN);
 
   // COM2A = 00: disconnect OC2A
   // COM2B = 00: disconnect OC2B; to send signal set to 10: OC2B non-inverted

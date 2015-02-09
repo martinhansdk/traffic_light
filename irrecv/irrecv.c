@@ -36,14 +36,12 @@ static long decodeJVC(decode_results *results);
 void setup_irrecv()
 {
   // set pin modes
-#if defined(__AVR_ATtiny2313__) || defined(__AVR_ATtiny4313__)
-  sbi(DDRB, PB5); // IR activity indicator
-#else
-  sbi(DDRA, PA0); // IR activity indicator
+#if defined(ACTIVITY_LED_PIN)
+  set_dir_out(ACTIVITY_LED_PIN);
 #endif
 
-  cbi(DDRA, PA7); // IR detector pin
-  sbi(PORTA, PA7); // pull-up
+  set_dir_in(IR_DETECTOR_PIN);
+  pin_high(IR_DETECTOR_PIN);  // pull-up
 
   // initialize state machine variables
   irparams.rcvstate = STATE_IDLE;
@@ -79,17 +77,13 @@ void setup_irrecv()
 
 ISR(TIM1_OVF_vect)
 {
-/*
-#if defined(__AVR_ATtiny2313__) || defined(__AVR_ATtiny4313__)
-  PORTB |= _BV(PB5);
-#else
-  PORTB |= _BV(PB2);
+#if defined(ACTIVITY_LED_PIN)
+    pin_high(ACTIVITY_LED_PIN);
 #endif
-*/
 
   RESET_TIMER1;
 
-  uint8_t irdata = ((PINB & _BV(PA7)) != 0);
+  uint8_t irdata = (get_input(IR_DETECTOR_PIN) != 0);
 
   irparams.timer++; // One more 50us tick
   if (irparams.rawlen >= RAWBUF) {
@@ -142,19 +136,13 @@ ISR(TIM1_OVF_vect)
     break;
   }
 
+#if defined(ACTIVITY_LED_PIN)
   if (irdata == MARK) {
-    PORTB |= _BV(PA0);
+    pin_high(ACTIVITY_LED_PIN);
   } else {
-    PORTB &= ~(_BV(PA0));
+    pin_low(ACTIVITY_LED_PIN);
   }
-
-/*
-#if defined(__AVR_ATtiny2313__) || defined(__AVR_ATtiny4313__)
-  PORTB &= ~(_BV(PB5));
-#else
-  PORTB &= ~(_BV(PB2));
 #endif
-*/
 }
 
 void irrecv_resume(void)
