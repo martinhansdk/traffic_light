@@ -28,8 +28,10 @@
 #endif
 
 #include <stdbool.h>
+#include <avr/eeprom.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include <avr/power.h>
 
 #include "schedule.h"
 #include "debounce.h"
@@ -134,9 +136,14 @@ decode_results irdata = {
 };
 
 int main() {
+  // read clock calibration from eeprom
+  OSCCAL = eeprom_read_byte((uint8_t*)0);
+
+  // system clock = oscillator/2 = 4 MHz
+  clock_prescale_set(clock_div_2);
+
   // define schedule
   int i = 0;
-
 
   setPattern(&schedule, i++, 2*2, true, true, false); // yellow/red
   setPattern(&schedule, i++, 18*2, false, false, true); // green
