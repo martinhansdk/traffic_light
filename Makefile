@@ -21,12 +21,12 @@ DEVICE     = attiny84
 CLOCK      = 4000000
 PROGRAM_PORT = COM6
 PROGRAMMER = -c arduino -P $(PROGRAM_PORT) -b 19200
-OBJECTS    = main.o schedule.o debounce.c irrecv/irrecv.o irsend/irsend.o
+OBJECTS    = main.o schedule.o debounce.o irrecv/irrecv.o irsend/irsend.o
 
 # Use the fuse bit calculator at http://www.engbedded.com/fusecalc/ to
 # calculate these
 # 8 MHz internal RC
-FUSES       = -U lfuse:w:0xa2:m -U hfuse:w:0xd7:m -U efuse:w:0xff:m
+FUSES       = -U lfuse:w:0xe2:m -U hfuse:w:0xd7:m -U efuse:w:0xff:m
 
 # Tune the lines below only if you know what you are doing:
 AVRDUDE = avrdude $(PROGRAMMER) -p $(DEVICE)

@@ -7,7 +7,7 @@
 
  Pin assignments:
 
- PA0: IR activoty indicator LED (debug)
+ PA0: IR activity indicator LED (debug)
  PA1: red LED
  PA2: yellow LED
  PA3: green LED
@@ -40,7 +40,7 @@
 #include "hal/pins.h"
 
 #define BUTTON_PIN A,PA0
-#define IR_SEND_PIN A,PA7
+#define IR_SEND_PIN A,PA6
 #define RED_PIN A,PA1
 #define YELLOW_PIN A,PA2
 #define GREEN_PIN A,PA3
@@ -48,9 +48,10 @@
 
 
 #define CMD_SHIFT 10
-#define IR_SYNC_CMD    0x5a
-#define IR_PROGRAM_CMD 0x45
-#define IR_ROLE_CMD    0x57
+#define START_BIT      0x80
+#define IR_SYNC_CMD    (START_BIT | 0x5a)
+#define IR_PROGRAM_CMD (START_BIT | 0x45)
+#define IR_ROLE_CMD    (START_BIT | 0x57)
 
 // sync command message format
 #define MODE_SHIFT 9
@@ -191,7 +192,6 @@ int main() {
   sei();             // enable all interrupts
 
   while(1) {
-
       // wait until timer isr was run
       while(true) {
         if (irrecv_decode(&irdata)) {
@@ -206,11 +206,12 @@ int main() {
 
       if(light_time >= cycle_time) {
         light_time %= cycle_time;
-
-        if(is_master) {
-          irsend_sendRC5((IR_SYNC_CMD<<CMD_SHIFT) | (manual_mode << MODE_SHIFT) | light_time, 16);
-        }
       }
+
+      if(is_master) {
+        irsend_sendRC5((IR_SYNC_CMD<<CMD_SHIFT) | (manual_mode << MODE_SHIFT) | light_time, 16);
+      }
+
       set_lights(light_time);
   }
 }
