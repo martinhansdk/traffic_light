@@ -1,95 +1,217 @@
+/******
+ Implementation of a toy traffic light.
+
+ timer 0: light scheduling and button debouncing
+ timer 1: IR receive and transmit
+
+
+ Pin assignments:
+
+ PA0: IR activity indicator LED (debug)
+ PA1: red LED
+ PA2: yellow LED
+ PA3: green LED
+ PA4: ISP USCK
+ PA5: ISP MISO
+ PA6: ISP MOSI
+ PA7: IR RX
+
+ PB0: XTAL1
+ PB1: XTAL2
+ PB2: IR TX
+ PB3: ISP NRESET
+*******/
+
+
+#ifndef F_CPU
+#error F_CPU not defined
+#endif
+
+#include <stdbool.h>
+#include <avr/eeprom.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include <avr/power.h>
 
-volatile int timer_overflow_count = 0;
+#include "schedule.h"
+#include "debounce.h"
+#include "irrecv/irrecv.h"
+#include "irsend/irsend.h"
+#include "hal/pins.h"
 
-#define RED_PIN PB3
-#define YELLOW_PIN PB4
-#define GREEN_PIN PB5
+#define BUTTON_PIN A,PA0
+#define IR_SEND_PIN A,PA6
+#define RED_PIN A,PA1
+#define YELLOW_PIN A,PA2
+#define GREEN_PIN A,PA3
+#define IR_RECEIVE_PIN A,PA7
 
-/**
-  The timing of a traffic light determines how the light_time is translated
-  into light patterns. A and B timing are defined such that cars coming from
-  A and B direction never have green light at the same time.
-*/
-typedef enum {A, B} LightTiming;
-LightTiming timing = A;
+
+#define CMD_SHIFT 10
+#define START_BIT      0x80
+#define IR_SYNC_CMD    (START_BIT | 0x5a)
+#define IR_PROGRAM_CMD (START_BIT | 0x45)
+#define IR_ROLE_CMD    (START_BIT | 0x57)
+
+// sync command message format
+#define MODE_SHIFT 9
+
+// program command message format
+#define INDEX_SHIFT  10
+#define RED_SHIFT    9
+#define YELLOW_SHIFT 8
+#define GREEN_SHIFT  7
+
+volatile int timer_interrupt = 0;
+bool is_master = true;
+bool manual_mode = false;
 
 /**
   light_time contains the global time which is shared by all traffic lights
   The correct state of the lights is computed from this.
-  The unit is seconds.
+  The unit is 1/2 seconds.
 */
+#define TIME_UNIT_MS 500
 int light_time = 0;
-
-/* define the schedule
-*/
-#define YELLOW_RED_DURATION 1
-#define GREEN_DURATION 18
-#define YELLOW_DURATION 4
-#define BOTH_RED_DURATION 1
-// the duration of the red signal must be just so long that the light pointing
-// in the other direction can cycle through yellow-green-yellow plus a
-// little margin where botgh are red
-#define RED_DURATION (YELLOW_RED_DURATION + GREEN_DURATION + YELLOW_DURATION + BOTH_RED_DURATION)
-
-// calculate the cycle time and the switch times based on this
-#define CYCLE_TIME  (RED_DURATION + YELLOW_RED_DURATION + GREEN_DURATION + YELLOW_DURATION)
-#define SWITCH_TO_YELLOW_RED_TIME (RED_DURATION)
-#define SWITCH_TO_GREEN_TIME (SWITCH_TO_YELLOW_RED_TIME + YELLOW_RED_DURATION)
-#define SWITCH_TO_YELLOW_TIME (SWITCH_TO_GREEN_TIME + GREEN_DURATION)
-
-// the B timing switches to yellow/red shortly after the A timing
-// has switched to red
-#define B_OFFSET (SWITCH_TO_YELLOW_RED_TIME - BOTH_RED_DURATION)
+int cycle_time = 1;
+Schedule schedule;
 
 void set_lights(int light_time) {
-  if(timing == B) {
-    light_time = (light_time + B_OFFSET) % CYCLE_TIME;
-  }
+  const LightPattern* pattern = currentPattern(&schedule, light_time);
 
-  int red = 0;
-  int yellow = 0;
-  int green = 0;
-
-  if(light_time < SWITCH_TO_YELLOW_RED_TIME) {
-    red = 1;
-  } else if(light_time < SWITCH_TO_GREEN_TIME) {
-    red = 1;
-    yellow = 1;
-  } else if(light_time < SWITCH_TO_YELLOW_TIME) {
-    green = 1;
-  } else {
-    yellow = 1;
-  }
-
-  // all off
-  PORTB &= ~((1 << RED_PIN) | (1 << YELLOW_PIN) | (1 << GREEN_PIN));
-  // turn only the right ones on
-  PORTB |= (red << RED_PIN) | (yellow << YELLOW_PIN) | (green << GREEN_PIN);
+  if(pattern->red) pin_high(RED_PIN); else pin_low(RED_PIN);
+  if(pattern->yellow) pin_high(YELLOW_PIN); else pin_low(YELLOW_PIN);
+  if(pattern->green) pin_high(GREEN_PIN); else pin_low(GREEN_PIN);
 }
 
+void handle_ir_commands(const decode_results *irdata) {
 
-ISR(TIM0_OVF_vect) {
-   if (++timer_overflow_count > 5) {   // a timer overflow occurs 4.6 times per second
-      light_time = (light_time+1) % CYCLE_TIME;
+  unsigned long value = irdata->value;
+  int command = (value >> CMD_SHIFT) & 0x3f; // 6 bits of command
+
+  switch(command) {
+  case IR_SYNC_CMD:
+    manual_mode = (value >> MODE_SHIFT) & 0x1;  // 1 bit
+    light_time = value & 0x1ff; // 9 bits of time
+    break;
+  case IR_PROGRAM_CMD:
+    {
+      int index = (value >> INDEX_SHIFT) & 0x7;  // 3 bit
+      int red = (value >> RED_SHIFT) & 0x1; // 1 bit
+      int yellow = (value >> YELLOW_SHIFT) & 0x1; // 1 bit
+      int green = (value >> GREEN_SHIFT) & 0x1; // 1 bit
+      int duration = value & 0x7f; // 7 bits of duration
+      setPattern(&schedule, index, duration, red, yellow, green);
+    }
+    break;
+  case IR_ROLE_CMD:
+    is_master = value & 0x1;
+    break;
+  default:
+    break;
+  }
+}
+
+bool RawKeyPressed() {
+    return get_input(BUTTON_PIN);
+}
+
+// timer compare interrupt service routine, called once every 1 ms
+uint16_t timer_int_count = 0;
+
+ISR(TIM0_COMPA_vect)
+{
+  bool button_changed, button_pressed;
+
+  timer_int_count++;
+  if(timer_int_count >= TIME_UNIT_MS) {
+      timer_interrupt = 1;
+      timer_int_count = 0;
+  }
+
+  DebounceSwitch(&button_changed, &button_pressed);
+}
+
+decode_results irdata = {
+    .value = 0
+};
+
+int main() {
+  // read clock calibration from eeprom
+  OSCCAL = eeprom_read_byte((uint8_t*)0);
+
+  // system clock = oscillator/2 = 4 MHz
+  clock_prescale_set(clock_div_2);
+
+  // define schedule
+  int i = 0;
+
+  setPattern(&schedule, i++, 2*2, true, true, false); // yellow/red
+  setPattern(&schedule, i++, 18*2, false, false, true); // green
+  setPattern(&schedule, i++, 4*2, false, true, false); // yellow
+  // the duration of the red signal must be just so long that the light pointing
+  // in the other direction can cycle through yellow-green-yellow plus a
+  // little margin where both are red
+  setPattern(&schedule, i, 0, false, false, false); // temporary end marker
+  int red_duration = cycleTime(&schedule) + 1*2;
+  setPattern(&schedule, i++, red_duration, true, false, false); // red
+  setPattern(&schedule, i, 0, false, false, false); // end marker
+
+/*
+  setPattern(&schedule, i++, 1*2, false, true, false); // yellow
+  setPattern(&schedule, i++, 1*2, false, false, false); // off
+  setPattern(&schedule, i, 0, false, false, false); // end marker
+*/
+
+  cycle_time = cycleTime(&schedule);
+
+
+  // Set LED ports to output
+  set_dir_out(RED_PIN);
+  set_dir_out(YELLOW_PIN);
+  set_dir_out(GREEN_PIN);
+
+  // initialize timer0, trigger compare interrupt once every 1 ms
+  TCCR0A = 0x02;      // Clear Timer on Compare Match (CTC) mode
+  TIFR0 |= 0x01;      // clear interrupt flag
+  TIMSK0 = 0x02;      // TC0 compare match A interrupt enable
+  TCCR0B = 0x03;      // clock source CLK/64, start timer
+
+#if F_CPU == 4000000
+  OCR0A  = 62;        // number to count up to
+#elif F_CPU == 8000000
+  OCR0A  = 125;       // number to count up to
+#elif F_CPU == 16000000
+  OCR0A  = 250;       // number to count up to
+#else
+#error Unsupported F_CPU
+#endif
+
+  setup_irrecv();
+
+  sei();             // enable all interrupts
+
+  while(1) {
+      // wait until timer isr was run
+      while(true) {
+        if (irrecv_decode(&irdata)) {
+          handle_ir_commands(&irdata);
+          irrecv_resume();
+        }
+        if(timer_interrupt) break;
+      }
+      timer_interrupt = 0;
+
+      light_time++;
+
+      if(light_time >= cycle_time) {
+        light_time %= cycle_time;
+      }
+
+      if(is_master) {
+        irsend_sendRC5((IR_SYNC_CMD<<CMD_SHIFT) | (manual_mode << MODE_SHIFT) | light_time, 16);
+      }
+
       set_lights(light_time);
-      timer_overflow_count = 0;
-   }
-}
-
-int main(void) {
-   // Set LED ports to output
-   DDRB = 1<<RED_PIN | 1<<YELLOW_PIN | 1<<GREEN_PIN;
-
-   // prescale timer to 1/1024th the clock rate
-   TCCR0B |= (1<<CS02) | (1<<CS00);
-
-   // enable timer overflow interrupt
-   TIMSK |=1<<TOIE0;
-   sei();
-
-   while(1) {
-      // let ISR handle the LEDs forever
-   }
+  }
 }

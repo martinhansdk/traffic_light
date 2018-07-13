@@ -1,0 +1,2 @@
+This port of the IR receive library for attiny was adapted for this project
+from https://github.com/alohr/avr/tree/master/irrecv.
