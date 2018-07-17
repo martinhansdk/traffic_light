@@ -40,7 +40,7 @@
 #include "hal/pins.h"
 
 #define BUTTON_PIN A,PA0
-#define IR_SEND_PIN A,PA6
+#define IR_SEND_PIN B,PB2
 #define RED_PIN A,PA1
 #define YELLOW_PIN A,PA2
 #define GREEN_PIN A,PA3

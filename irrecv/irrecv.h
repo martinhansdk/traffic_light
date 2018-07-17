@@ -52,6 +52,6 @@ void irrecv_resume(void);
 #define MARK_EXCESS 100
 
 #define IR_DETECTOR_PIN A,PA7
-#define ACTIVITY_LED_PIN A,PA0
+#define ACTIVITY_LED_PIN A,PA5
 
 #endif /* IRRECV_H */
