@@ -18,19 +18,20 @@
 # FUSES ........ Parameters for avrdude to flash the fuses appropriately.
 
 DEVICE     = attiny84
-CLOCK      = 4000000
-PROGRAM_PORT = COM6
-PROGRAMMER = -c arduino -P $(PROGRAM_PORT) -b 19200
+PROGDEVICE = t84
+CLOCK      = 8000000
+MASTER     = 0
+PROGRAMMER = -c usbasp 
 OBJECTS    = main.o schedule.o debounce.o irrecv/irrecv.o irsend/irsend.o
 
 # Use the fuse bit calculator at http://www.engbedded.com/fusecalc/ to
 # calculate these
-# 8 MHz internal RC
-FUSES       = -U lfuse:w:0xe2:m -U hfuse:w:0xd7:m -U efuse:w:0xff:m
+# 4 or 8 MHz external crystal ot resonator
+FUSES       = -U lfuse:w:0x4c:m -U hfuse:w:0xdf:m -U efuse:w:0xff:m
 
 # Tune the lines below only if you know what you are doing:
-AVRDUDE = avrdude $(PROGRAMMER) -p $(DEVICE)
-COMPILE = avr-gcc -Wall -Os -std=c99 -DF_CPU=$(CLOCK) -mmcu=$(DEVICE) -Wl,-gc-sections -ffunction-sections -fdata-sections
+AVRDUDE = sudo avrdude $(PROGRAMMER) -p $(PROGDEVICE)
+COMPILE = avr-gcc -Wall -Os -std=c99 -DF_CPU=$(CLOCK) -DMASTER=$(MASTER) -mmcu=$(DEVICE) -Wl,-gc-sections -ffunction-sections -fdata-sections
 
 CC = $(COMPILE)
 

@@ -63,7 +63,11 @@
 #define GREEN_SHIFT  7
 
 volatile int timer_interrupt = 0;
+#if MASTER == 1
 bool is_master = true;
+#else
+bool is_master = false;
+#endif
 bool manual_mode = false;
 
 /**
@@ -171,6 +175,9 @@ int main() {
   set_dir_out(YELLOW_PIN);
   set_dir_out(GREEN_PIN);
 
+  pin_high(RED_PIN);
+  pin_high(GREEN_PIN);
+  
   // initialize timer0, trigger compare interrupt once every 1 ms
   TCCR0A = 0x02;      // Clear Timer on Compare Match (CTC) mode
   TIFR0 |= 0x01;      // clear interrupt flag
