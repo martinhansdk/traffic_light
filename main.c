@@ -25,7 +25,19 @@
 
 #ifndef F_CPU
 #error F_CPU not defined
+#else
+
+#if F_CPU == 4000000
+#else
+#error F_CPU must be 4000000
 #endif
+
+#endif
+
+#ifndef F_OSC
+#error F_OSC not defined
+#endif
+
 
 #include <stdbool.h>
 #include <avr/eeprom.h>
@@ -40,7 +52,7 @@
 #include "hal/pins.h"
 
 #define BUTTON_PIN A,PA0
-#define IR_SEND_PIN B,PB2
+#define IR_SEND_PIN A,PA6
 #define RED_PIN A,PA1
 #define YELLOW_PIN A,PA2
 #define GREEN_PIN A,PA3
@@ -141,11 +153,18 @@ decode_results irdata = {
 };
 
 int main() {
-  // read clock calibration from eeprom
-  OSCCAL = eeprom_read_byte((uint8_t*)0);
-
+#if F_OSC == 4000000
+  // system clock = oscillator/1 = 4 MHz
+  clock_prescale_set(clock_div_1);
+#elif F_OSC == 8000000
   // system clock = oscillator/2 = 4 MHz
   clock_prescale_set(clock_div_2);
+#elif F_OSC == 16000000
+  // system clock = oscillator/4 = 4 MHz
+  clock_prescale_set(clock_div_4);
+#else
+#error Unsupported F_CPU
+#endif
 
   // define schedule
   int i = 0;
