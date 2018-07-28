@@ -12,7 +12,7 @@
 #ifndef IRremoteint_h
 #define IRremoteint_h
 
-#define CLKFUDGE 3      // fudge factor for clock interrupt overhead
+#define CLKFUDGE 0      // fudge factor for clock interrupt overhead
 #define CLK 65536      	// max value for clock (timer1)
 #if F_CPU == 8000000 || F_CPU == 16000000
 #define PRESCALE 8      // timer 1 clock prescale
@@ -132,7 +132,7 @@ extern volatile irparams_t irparams;
 #define SONY_BITS 12
 #define JVC_BITS  16
 
-#define MIN_RC5_SAMPLES 11
+#define MIN_RC5_SAMPLES 14
 #define MIN_RC6_SAMPLES 1
 
 #endif

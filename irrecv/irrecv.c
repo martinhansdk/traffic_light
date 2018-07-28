@@ -39,31 +39,36 @@ void setup_irrecv()
 #if defined(ACTIVITY_LED_PIN)
   set_dir_out(ACTIVITY_LED_PIN);
 #endif
-
+#if defined(ACTIVITY_LED_PIN2)
+  set_dir_out(ACTIVITY_LED_PIN2);
+#endif
+  
   set_dir_in(IR_DETECTOR_PIN);
   pin_high(IR_DETECTOR_PIN);  // pull-up
 
   // initialize state machine variables
   irparams.rcvstate = STATE_IDLE;
   irparams.rawlen = 0;
-
+  pin_high(ACTIVITY_LED_PIN);
+  
 #if F_CPU == 8000000 || F_CPU == 16000000
   // prescale /8
   TCCR1A = 0;
-  TCCR1B = 0x02;
+  TCCR1B = _BV(WGM13) |_BV(WGM12) | _BV(CS11);
 #elif F_CPU == 1000000 || F_CPU == 4000000
   // no prescaling
   TCCR1A = 0;
-  TCCR1B = 0x01;
+  TCCR1B = _BV(WGM12) | _BV(CS10);
 #else
 #error Unknown F_CPU
 #endif
 
   // Timer1 overflow interrupt enable
-  sbi(TIMSK1, TOIE1);
+  sbi(TIMSK1, OCIE1A);
 
-  RESET_TIMER1;
-
+  // RESET_TIMER1; P4NOSUBMIT
+  OCR1A = USECPERTICK * CLKSPERUSEC;
+    
   sei();  // enable interrupts
 }
 
@@ -75,13 +80,13 @@ void setup_irrecv()
 // As soon as a SPACE gets long, ready is set, state switches to IDLE, timing of SPACE continues.
 // As soon as first MARK arrives, gap width is recorded, ready is cleared, and new logging starts
 
-ISR(TIM1_OVF_vect)
+ISR(TIM1_COMPA_vect)
 {
 #if defined(ACTIVITY_LED_PIN)
-    pin_high(ACTIVITY_LED_PIN);
+  //    pin_high(ACTIVITY_LED_PIN);
 #endif
 
-  RESET_TIMER1;
+    //  RESET_TIMER1;
 
   uint8_t irdata = (get_input(IR_DETECTOR_PIN) != 0);
 
@@ -126,6 +131,8 @@ ISR(TIM1_OVF_vect)
         // Switch to STOP
         // Don't reset timer; keep counting space width
         irparams.rcvstate = STATE_STOP;
+        pin_low(ACTIVITY_LED_PIN);
+        
       }
     }
     break;
@@ -138,9 +145,9 @@ ISR(TIM1_OVF_vect)
 
 #if defined(ACTIVITY_LED_PIN)
   if (irdata == MARK) {
-    pin_high(ACTIVITY_LED_PIN);
+    //    pin_high(ACTIVITY_LED_PIN);
   } else {
-    pin_low(ACTIVITY_LED_PIN);
+    //    pin_low(ACTIVITY_LED_PIN);
   }
 #endif
 }
@@ -232,6 +239,7 @@ static long decodeNEC(decode_results *results)
   if (!MATCH_SPACE(results->rawbuf[offset], NEC_HDR_SPACE)) {
     return ERR;
   }
+
   offset++;
   for (i = 0; i < NEC_BITS; i++) {
     if (!MATCH_MARK(results->rawbuf[offset], NEC_BIT_MARK)) {
@@ -355,13 +363,17 @@ static long decodeRC5(decode_results *results) {
   for (nbits = 0; offset < irparams.rawlen; nbits++) {
     int levelA = getRClevel(results, &offset, &used, RC5_T1);
     int levelB = getRClevel(results, &offset, &used, RC5_T1);
+    
+    pin_toggle(ACTIVITY_LED_PIN);
     if (levelA == SPACE && levelB == MARK) {
       // 1 bit
       data = (data << 1) | 1;
+      pin_high(ACTIVITY_LED_PIN2);
     }
     else if (levelA == MARK && levelB == SPACE) {
       // zero bit
       data <<= 1;
+      pin_low(ACTIVITY_LED_PIN2);
     }
     else {
       return ERR;

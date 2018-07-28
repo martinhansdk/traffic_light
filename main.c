@@ -13,12 +13,11 @@
  PA3: green LED
  PA4: ISP USCK
  PA5: ISP MISO
- PA6: ISP MOSI
+ PA6: ISP MOSI, IR TX
  PA7: IR RX
 
  PB0: XTAL1
  PB1: XTAL2
- PB2: IR TX
  PB3: ISP NRESET
 *******/
 
@@ -95,6 +94,8 @@ Schedule schedule;
 void set_lights(int light_time) {
   const LightPattern* pattern = currentPattern(&schedule, light_time);
 
+  return; // P4NOSUBMIT
+  
   if(pattern->red) pin_high(RED_PIN); else pin_low(RED_PIN);
   if(pattern->yellow) pin_high(YELLOW_PIN); else pin_low(YELLOW_PIN);
   if(pattern->green) pin_high(GREEN_PIN); else pin_low(GREEN_PIN);
@@ -105,10 +106,12 @@ void handle_ir_commands(const decode_results *irdata) {
   unsigned long value = irdata->value;
   int command = (value >> CMD_SHIFT) & 0x3f; // 6 bits of command
 
+  pin_toggle(RED_PIN); // P4NOSUBMIT
   switch(command) {
   case IR_SYNC_CMD:
     manual_mode = (value >> MODE_SHIFT) & 0x1;  // 1 bit
     light_time = value & 0x1ff; // 9 bits of time
+    pin_toggle(YELLOW_PIN); // P4NOSUBMIT
     break;
   case IR_PROGRAM_CMD:
     {
@@ -124,6 +127,7 @@ void handle_ir_commands(const decode_results *irdata) {
     is_master = value & 0x1;
     break;
   default:
+    pin_toggle(GREEN_PIN); // P4NOSUBMIT
     break;
   }
 }

@@ -16,7 +16,7 @@
 #define RAWBUF 68
 #else
 // RC5 only
-#define RAWBUF 24
+#define RAWBUF 68
 #endif
 
 // Results returned from the decoder
@@ -53,5 +53,6 @@ void irrecv_resume(void);
 
 #define IR_DETECTOR_PIN A,PA7
 #define ACTIVITY_LED_PIN A,PA5
+#define ACTIVITY_LED_PIN2 A,PA4
 
 #endif /* IRRECV_H */

@@ -201,7 +201,7 @@ void irsend_sendSAMSUNG(unsigned long data, int nbits)
 
 void enableIROut(int khz) {
   // Enables IR output.  The khz value controls the modulation frequency in kilohertz.
-  // The IR output will be on PB2
+  // The IR output will be on PA6
   // This routine is designed for 36-40KHz; if you use it for other values, it's up to you
   // to make sure it gives reasonable results.  (Watch out for overflow / underflow / rounding.)
   // TIMER2 is used in phase-correct PWM mode, with OCR2A controlling the frequency and OCR2B
