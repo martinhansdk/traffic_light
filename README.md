@@ -122,6 +122,12 @@ Makefile to change the programmer type if needed and run
     
 To program a slave run the above with `MASTER=0`.
 
+To run the unittests
+
+    make test
+    
+The unittests execute on the host machine.
+
 Mechanics
 =========
 
