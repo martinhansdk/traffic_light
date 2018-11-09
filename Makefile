@@ -84,3 +84,8 @@ disasm:	main.elf
 
 cpp:
 	$(COMPILE) -E main.c
+
+.PHONY: test
+test: 
+	g++ test/tests.cpp -g -o test/unittests
+	test/unittests
