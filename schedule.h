@@ -2,7 +2,7 @@
 #define _SCHEDULE_H value
 
 #include <stdbool.h>
-
+#include <stdint.h>
 
 /**
   A LightPattern specifies a duration and which lamps are on for that duration.
@@ -15,7 +15,7 @@
 #define MAX_PATTERNS 8
 
 typedef struct {
-  int duration; // unit: 1/2 seconds
+  uint16_t duration; // unit: 1/2 seconds
   bool red;
   bool yellow;
   bool green;
@@ -28,7 +28,7 @@ typedef struct {
   LightPattern patterns[MAX_PATTERNS];
 } Schedule;
 
-extern int cycleTime(Schedule* schedule);
+extern uint16_t cycleTime(Schedule* schedule);
 extern void setPattern(Schedule* schedule, int index, int duration, bool red, bool yellow, bool green);
 extern const LightPattern* currentPattern(Schedule* schedule, int time);
 

@@ -111,7 +111,9 @@ To build the firmware on Ubuntu or Debian do the following:
     sudo apt-get install gcc-avr binutils-avr avr-libc avrdude
     git clone https://github.com/martinhansdk/traffic_light.git
     
-Connect an AVR programmer such as an usbasp to the board (edit the Makefile to change the programmer type) and run
+Connect an AVR programmer such as an usbasp to the board. The
+programmer has to be set to slow mode and 3.3V operation. Edit the
+Makefile to change the programmer type if needed and run
     
     make clean
     make MASTER=1

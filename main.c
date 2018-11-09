@@ -13,12 +13,12 @@
  PA3: green LED
  PA4: ISP USCK
  PA5: ISP MISO
- PA6: ISP MOSI
+ PA6: ISP MOSI, IR TX
  PA7: IR RX
 
  PB0: XTAL1
  PB1: XTAL2
- PB2: IR TX
+ PB2: NC
  PB3: ISP NRESET
 *******/
 
@@ -40,6 +40,7 @@
 
 
 #include <stdbool.h>
+#include <stdint.h>
 #include <avr/eeprom.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -61,9 +62,9 @@
 
 #define CMD_SHIFT 10
 #define START_BIT      0x80
-#define IR_SYNC_CMD    (START_BIT | 0x5a)
-#define IR_PROGRAM_CMD (START_BIT | 0x45)
-#define IR_ROLE_CMD    (START_BIT | 0x57)
+#define IR_SYNC_CMD    ((uint32_t)(START_BIT | 0x5a))
+#define IR_PROGRAM_CMD ((uint32_t)(START_BIT | 0x45))
+#define IR_ROLE_CMD    ((uint32_t)(START_BIT | 0x57))
 
 // sync command message format
 #define MODE_SHIFT 9
@@ -88,11 +89,11 @@ bool manual_mode = false;
   The unit is 1/2 seconds.
 */
 #define TIME_UNIT_MS 500
-int light_time = 0;
-int cycle_time = 1;
+uint16_t light_time = 0;
+uint16_t cycle_time = 1;
 Schedule schedule;
 
-void set_lights(int light_time) {
+void set_lights(uint16_t light_time) {
   const LightPattern* pattern = currentPattern(&schedule, light_time);
 
   if(pattern->red) pin_high(RED_PIN); else pin_low(RED_PIN);
@@ -103,12 +104,12 @@ void set_lights(int light_time) {
 void handle_ir_commands(const decode_results *irdata) {
 
   unsigned long value = irdata->value;
-  int command = (value >> CMD_SHIFT) & 0x3f; // 6 bits of command
+  int command = (value >> CMD_SHIFT) & 0xff; // 7 bits of command + 1 start bit
 
   switch(command) {
   case IR_SYNC_CMD:
     manual_mode = (value >> MODE_SHIFT) & 0x1;  // 1 bit
-    light_time = value & 0x1ff; // 9 bits of time
+    light_time = value & 0x1ffUL; // 9 bits of time
     break;
   case IR_PROGRAM_CMD:
     {
@@ -175,8 +176,8 @@ int main() {
   // the duration of the red signal must be just so long that the light pointing
   // in the other direction can cycle through yellow-green-yellow plus a
   // little margin where both are red
-  setPattern(&schedule, i, 0, false, false, false); // temporary end marker
-  int red_duration = cycleTime(&schedule) + 1*2;
+  setPattern(&schedule, i, 0, false, false, false); // temporary end marker, remove this when beginning to make intersections
+  uint16_t red_duration = cycleTime(&schedule) + 1*2;
   setPattern(&schedule, i++, red_duration, true, false, false); // red
   setPattern(&schedule, i, 0, false, false, false); // end marker
 
@@ -235,7 +236,7 @@ int main() {
       }
 
       if(is_master) {
-        irsend_sendRC5((IR_SYNC_CMD<<CMD_SHIFT) | (manual_mode << MODE_SHIFT) | light_time, 16);
+        irsend_sendRC5((IR_SYNC_CMD<<CMD_SHIFT) | (manual_mode << MODE_SHIFT) | light_time, 18);
       }
 
       set_lights(light_time);

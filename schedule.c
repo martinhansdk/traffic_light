@@ -11,8 +11,8 @@ void setPattern(Schedule* schedule, int index, int duration, bool red, bool yell
     }
 }
 
-int cycleTime(Schedule* schedule) {
-    int sum=0;
+uint16_t cycleTime(Schedule* schedule) {
+    uint16_t sum=0;
     int i;
 
     for(i = 0 ; i < MAX_PATTERNS ; i++) {
