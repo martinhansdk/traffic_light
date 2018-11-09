@@ -31,7 +31,7 @@ FUSES       = -U lfuse:w:0x4c:m -U hfuse:w:0xdf:m -U efuse:w:0xff:m
 
 # Tune the lines below only if you know what you are doing:
 AVRDUDE = sudo avrdude $(PROGRAMMER) -p $(PROGDEVICE)
-COMPILE = avr-gcc -Wall -Os -std=c99 -DF_CPU=4000000 -DF_OSC=$(CLOCK) -DMASTER=$(MASTER) -mmcu=$(DEVICE) -Wl,-gc-sections -ffunction-sections -fdata-sections
+COMPILE = avr-gcc -Wall -Wpedantic -Os -std=c99 -DF_CPU=4000000 -DF_OSC=$(CLOCK) -DMASTER=$(MASTER) -mmcu=$(DEVICE) -Wl,-gc-sections -ffunction-sections -fdata-sections
 
 CC = $(COMPILE)
 

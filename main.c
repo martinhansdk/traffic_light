@@ -46,6 +46,7 @@
 #include <avr/interrupt.h>
 #include <avr/power.h>
 
+#include "messages.h"
 #include "schedule.h"
 #include "debounce.h"
 #include "irrecv/irrecv.h"
@@ -59,21 +60,6 @@
 #define GREEN_PIN A,PA3
 #define IR_RECEIVE_PIN A,PA7
 
-
-#define CMD_SHIFT 10
-#define START_BIT      0x80
-#define IR_SYNC_CMD    ((uint32_t)(START_BIT | 0x5a))
-#define IR_PROGRAM_CMD ((uint32_t)(START_BIT | 0x45))
-#define IR_ROLE_CMD    ((uint32_t)(START_BIT | 0x57))
-
-// sync command message format
-#define MODE_SHIFT 9
-
-// program command message format
-#define INDEX_SHIFT  10
-#define RED_SHIFT    9
-#define YELLOW_SHIFT 8
-#define GREEN_SHIFT  7
 
 volatile int timer_interrupt = 0;
 #if MASTER == 1
@@ -104,25 +90,10 @@ void set_lights(uint16_t light_time) {
 void handle_ir_commands(const decode_results *irdata) {
 
   unsigned long value = irdata->value;
-  int command = (value >> CMD_SHIFT) & 0xff; // 7 bits of command + 1 start bit
 
-  switch(command) {
+  switch(extract_command(value)) {
   case IR_SYNC_CMD:
-    manual_mode = (value >> MODE_SHIFT) & 0x1;  // 1 bit
-    light_time = value & 0x1ffUL; // 9 bits of time
-    break;
-  case IR_PROGRAM_CMD:
-    {
-      int index = (value >> INDEX_SHIFT) & 0x7;  // 3 bit
-      int red = (value >> RED_SHIFT) & 0x1; // 1 bit
-      int yellow = (value >> YELLOW_SHIFT) & 0x1; // 1 bit
-      int green = (value >> GREEN_SHIFT) & 0x1; // 1 bit
-      int duration = value & 0x7f; // 7 bits of duration
-      setPattern(&schedule, index, duration, red, yellow, green);
-    }
-    break;
-  case IR_ROLE_CMD:
-    is_master = value & 0x1;
+    extract_sync_message(value, &manual_mode, &light_time);
     break;
   default:
     break;
@@ -164,7 +135,7 @@ int main() {
   // system clock = oscillator/4 = 4 MHz
   clock_prescale_set(clock_div_4);
 #else
-#error Unsupported F_CPU
+#error Unsupported F_OSC
 #endif
 
   // define schedule
@@ -206,10 +177,6 @@ int main() {
 
 #if F_CPU == 4000000
   OCR0A  = 62;        // number to count up to
-#elif F_CPU == 8000000
-  OCR0A  = 125;       // number to count up to
-#elif F_CPU == 16000000
-  OCR0A  = 250;       // number to count up to
 #else
 #error Unsupported F_CPU
 #endif
@@ -236,9 +203,11 @@ int main() {
       }
 
       if(is_master) {
-        irsend_sendRC5((IR_SYNC_CMD<<CMD_SHIFT) | (manual_mode << MODE_SHIFT) | light_time, 18);
+        irsend_sendRC5( make_sync_message(manual_mode, light_time) , 18);
       }
 
       set_lights(light_time);
   }
 }
+
+
