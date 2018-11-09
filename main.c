@@ -203,7 +203,7 @@ int main() {
       }
 
       if(is_master) {
-        irsend_sendRC5( make_sync_message(manual_mode, light_time) , 18);
+        irsend_sendRC5( make_sync_message(manual_mode, light_time), MESSAGE_WIDTH);
       }
 
       set_lights(light_time);

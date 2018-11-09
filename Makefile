@@ -87,5 +87,5 @@ cpp:
 
 .PHONY: test
 test: 
-	g++ test/tests.cpp -g -std=gnu++11 -o test/unittests
+	g++ test/tests.cpp -g -std=gnu++11 -O -o test/unittests
 	test/unittests

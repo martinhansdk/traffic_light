@@ -4,6 +4,8 @@
 #include "stdbool.h"
 #include "stdint.h"
 
+#define MESSAGE_WIDTH 18
+
 #define CMD_SHIFT 10
 #define START_BIT      0x80
 #define IR_SYNC_CMD    ((uint32_t)(START_BIT | 0x5a))
