@@ -1,5 +1,6 @@
 #include "irsend.h"
 #include "irsendint.h"
+#include "../pin_assignments.h"
 
 #include <util/delay.h>
 
@@ -216,10 +217,10 @@ void enableIROut(int khz) {
   TIMER_DISABLE_INTR; //Timer1 Overflow Interrupt
 
   // set pin to output
-  set_dir_out(IRSEND_PIN);
+  set_dir_out(IR_SEND_PIN);
 
   // When not sending PWM, we want it low
-  pin_low(IRSEND_PIN);
+  pin_low(IR_SEND_PIN);
 
   // COM2A = 00: disconnect OC2A
   // COM2B = 00: disconnect OC2B; to send signal set to 10: OC2B non-inverted

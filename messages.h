@@ -26,7 +26,7 @@ uint8_t extract_command(uint32_t msg) {
 }
 
 uint32_t inline make_sync_message(bool manual_mode, uint16_t light_time) {
-  return (IR_SYNC_CMD<<CMD_SHIFT) | (manual_mode << MODE_SHIFT) | light_time;
+  return (uint32_t)(IR_SYNC_CMD<<CMD_SHIFT) | (uint32_t)(manual_mode << MODE_SHIFT) | (uint32_t)light_time;
 }
 
 void inline extract_sync_message(uint32_t msg, bool *manual_mode, uint16_t *light_time) {

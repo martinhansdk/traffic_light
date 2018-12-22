@@ -52,14 +52,7 @@
 #include "irrecv/irrecv.h"
 #include "irsend/irsend.h"
 #include "hal/pins.h"
-
-#define BUTTON_PIN A,PA0
-#define IR_SEND_PIN A,PA6
-#define RED_PIN A,PA1
-#define YELLOW_PIN A,PA2
-#define GREEN_PIN A,PA3
-#define IR_RECEIVE_PIN A,PA7
-
+#include "pin_assignments.h"
 
 volatile int timer_interrupt = 0;
 #if MASTER == 1
@@ -79,6 +72,14 @@ uint16_t light_time = 0;
 uint16_t cycle_time = 1;
 Schedule schedule;
 
+// P4NOSUBMIT
+void save_debug_dword(uint32_t addr, uint32_t word) {
+   if(eeprom_is_ready()) {
+     eeprom_update_dword((uint32_t*)addr, word);
+   }
+}
+
+
 void set_lights(uint16_t light_time) {
   const LightPattern* pattern = currentPattern(&schedule, light_time);
 
@@ -90,10 +91,16 @@ void set_lights(uint16_t light_time) {
 void handle_ir_commands(const decode_results *irdata) {
 
   unsigned long value = irdata->value;
+  save_debug_dword(0, value);
+  save_debug_dword(4, extract_command(value));
+  save_debug_dword(12, MESSAGE_WIDTH);
 
+  pin_toggle(RED_PIN);
   switch(extract_command(value)) {
   case IR_SYNC_CMD:
     extract_sync_message(value, &manual_mode, &light_time);
+    save_debug_dword(8, light_time);
+    pin_toggle(YELLOW_PIN);
     break;
   default:
     break;
@@ -203,9 +210,13 @@ int main() {
       }
 
       if(is_master) {
-        irsend_sendRC5( make_sync_message(manual_mode, light_time), MESSAGE_WIDTH);
+        //irsend_sendRC5( make_sync_message(manual_mode, light_time), MESSAGE_WIDTH); P4NOSUBMIT
+        irsend_sendRC5( make_sync_message(manual_mode, 0x155), MESSAGE_WIDTH);
+        save_debug_dword(0, make_sync_message(manual_mode, 0x155));
+        save_debug_dword(4, make_sync_message(manual_mode, 0x155) & 0x3ffff);
       }
 
+      if(is_master) // P4NOSUBMIT
       set_lights(light_time);
   }
 }

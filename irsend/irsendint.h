@@ -123,6 +123,5 @@
   OCR1A = SYSCLOCK * USECPERTICK / 1000000; \
   TCNT1 = 0; \
 }
-#define IRSEND_PIN B,PB2
 
 #endif
